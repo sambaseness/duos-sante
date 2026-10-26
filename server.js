@@ -63,7 +63,8 @@ function cleanMembre(b) {
   const s = String(b.sexe || '').trim().toUpperCase();
   const sexe = ['F', 'FILLE', 'FEMME'].includes(s) ? 'F' : ['M', 'H', 'G', 'GARCON', 'GARÇON', 'HOMME'].includes(s) ? 'M' : null;
   if (!nom || !departement || !sexe) return null;
-  return { nom, departement, sexe, nonMixte: !!b.nonMixte, malade: !!b.malade };
+  const tel = String(b.telephone || b.tel || b.phone || '').trim();
+  return { nom, departement, sexe, nonMixte: !!b.nonMixte, malade: !!b.malade, telephone: tel };
 }
 function getGroupe(req, res) {
   const g = store.groupe(req.params.id);
@@ -125,21 +126,52 @@ app.delete('/api/groupes/:id/membres/:mid', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Import en masse : une ligne par personne → Nom ; Département ; Sexe ; Non mixte ; Malade
+// Import en masse : une ligne par personne → Nom ; Département ; Sexe ; Non mixte ; Malade ; Téléphone
 app.post('/api/groupes/:id/import', auth, (req, res) => {
   const g = getGroupe(req, res); if (!g) return;
   const lignes = String(req.body?.texte || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let ajoutes = 0; const erreurs = [];
   lignes.forEach((l, i) => {
     const sep = l.includes(';') ? ';' : l.includes('\t') ? '\t' : ',';
-    const [nom, departement, sexe, nonMixte, malade] = l.split(sep).map(s => s.trim());
+    const parts = l.split(sep).map(s => s.trim());
+    const [nom, departement, sexe, nonMixte, malade, telephone] = parts;
     if (i === 0 && /^nom$/i.test(nom)) return; // ligne d'en-tête
-    const m = cleanMembre({ nom, departement, sexe, nonMixte: truthy(nonMixte), malade: truthy(malade) });
+    const m = cleanMembre({ nom, departement, sexe, nonMixte: truthy(nonMixte), malade: truthy(malade), telephone });
     if (!m) { erreurs.push(`Ligne ${i + 1} : « ${l} »`); return; }
     m.id = store.id(); g.membres.push(m); ajoutes++;
   });
   store.save();
   res.json({ ajoutes, erreurs });
+});
+
+// Export membres CSV
+app.get('/api/groupes/:id/export.membres.csv', auth, (req, res) => {
+  const g = getGroupe(req, res); if (!g) return;
+  const esc = v => /[";\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
+  const head = ['Nom', 'Département', 'Sexe', 'Non mixte', 'Malade', 'Téléphone'];
+  const rows = g.membres.map(m => [
+    m.nom,
+    m.departement,
+    m.sexe === 'F' ? 'F' : 'M',
+    m.nonMixte ? 'oui' : 'non',
+    m.malade ? 'oui' : 'non',
+    m.telephone || ''
+  ]);
+  const csv = [head, ...rows].map(r => r.map(esc).join(';')).join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="membres-${slug(g.nom)}.csv"`);
+  res.send('﻿' + csv);
+});
+
+// Modèle d'import téléchargeable
+app.get('/api/groupes/:id/import-template.csv', auth, (req, res) => {
+  const esc = v => /[";\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
+  const head = ['Nom', 'Département', 'Sexe', 'Non mixte', 'Malade', 'Téléphone'];
+  const example = ['Awa Diop', 'Informatique', 'F', 'non', 'non', '771234567'];
+  const csv = [head, example].map(r => r.map(esc).join(';')).join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="modele-import-membres.csv"`);
+  res.send('﻿' + csv);
 });
 
 // ---------- Algorithme ----------

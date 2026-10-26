@@ -111,9 +111,15 @@ function renderGroupe() {
   renderMembres(); renderResultat();
 }
 
+function updateMemberImportExportLinks() {
+  if (!state.courant) return;
+  $('#importTemplateBtn').href = `/api/groupes/${state.courant.id}/import-template.csv`;
+  $('#exportMembersBtn').href = `/api/groupes/${state.courant.id}/export.membres.csv`;
+}
+
 function renderMembres() {
   const g = state.courant, q = $('#search').value.trim().toLowerCase();
-  const list = g.membres.filter(m => !q || (m.nom + ' ' + m.departement).toLowerCase().includes(q));
+  const list = g.membres.filter(m => !q || (m.nom + ' ' + m.departement + ' ' + (m.telephone || '')).toLowerCase().includes(q));
   $('#countBadge').textContent = g.membres.length;
   $('#noMembers').classList.toggle('hidden', g.membres.length > 0);
 
@@ -126,13 +132,20 @@ function renderMembres() {
 
   $('#memberRows').innerHTML = list.map(m => `
     <tr data-id="${m.id}">
-      <td>${esc(m.nom)}</td>
-      <td>${esc(m.departement)}</td>
-      <td><span class="pill ${m.sexe === 'F' ? 'f' : 'm'}">${m.sexe === 'F' ? 'Fille' : 'Garçon'}</span></td>
+      <td><input class="edit" data-k="nom" value="${esc(m.nom)}" /></td>
+      <td><input class="edit" data-k="departement" value="${esc(m.departement)}" list="depList" /></td>
+      <td><input class="edit" data-k="telephone" value="${esc(m.telephone || '')}" placeholder="-" /></td>
+      <td>
+        <div class="seg small" data-k="sexe">
+          <button type="button" data-v="F" class="${m.sexe === 'F' ? 'on' : ''}">F</button>
+          <button type="button" data-v="M" class="${m.sexe === 'M' ? 'on' : ''}">M</button>
+        </div>
+      </td>
       <td class="c"><label class="check"><input type="checkbox" data-k="nonMixte" ${m.nonMixte ? 'checked' : ''}></label></td>
       <td class="c"><label class="check"><input type="checkbox" data-k="malade" ${m.malade ? 'checked' : ''}></label></td>
       <td class="c"><button class="btn ghost danger small del" title="Retirer">Retirer</button></td>
     </tr>`).join('');
+  updateMemberImportExportLinks();
 }
 $('#search').addEventListener('input', renderMembres);
 
@@ -148,29 +161,66 @@ $('#addForm').addEventListener('submit', async e => {
   const body = {
     nom: $('#fNom').value, departement: $('#fDep').value, sexe: state.sexe,
     nonMixte: $('#fNonMixte').checked, malade: $('#fMalade').checked,
+    telephone: $('#fTel').value,
   };
   try {
     const m = await api(`/api/groupes/${state.courant.id}/membres`, { method: 'POST', body });
     state.courant.membres.push(m);
-    $('#fNom').value = ''; $('#fNonMixte').checked = false; $('#fMalade').checked = false;
+    $('#fNom').value = ''; $('#fTel').value = ''; $('#fNonMixte').checked = false; $('#fMalade').checked = false;
     $('#fNom').focus(); // on garde le département pour enchaîner les saisies
     renderMembres(); syncCount(); toast(`${m.nom} ajouté(e)`);
   } catch (err) { toast(err.message); }
 });
 
 $('#memberRows').addEventListener('change', async e => {
-  const k = e.target.dataset.k; if (!k) return;
-  const id = e.target.closest('tr').dataset.id;
-  const m = await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'PATCH', body: { [k]: e.target.checked } });
-  Object.assign(state.courant.membres.find(x => x.id === id), m);
-  renderMembres();
+  const target = e.target;
+  const tr = target.closest('tr'); if (!tr) return;
+  const id = tr.dataset.id;
+  if (target.matches('input[type=checkbox]') && target.dataset.k) {
+    const k = target.dataset.k;
+    try {
+      const m = await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'PATCH', body: { [k]: target.checked } });
+      Object.assign(state.courant.membres.find(x => x.id === id), m);
+      renderMembres();
+    } catch (err) { toast(err.message); renderMembres(); }
+    return;
+  }
+  if (target.matches('input.edit') && target.dataset.k) {
+    const k = target.dataset.k;
+    try {
+      const m = await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'PATCH', body: { [k]: target.value } });
+      Object.assign(state.courant.membres.find(x => x.id === id), m);
+      toast('Membre mis à jour');
+      renderMembres();
+    } catch (err) { toast(err.message); renderMembres(); }
+  }
 });
+
+$('#memberRows').addEventListener('click', async e => {
+  const seg = e.target.closest('.seg[data-k]');
+  if (seg) {
+    const btn = e.target.closest('button'); if (!btn) return;
+    const tr = seg.closest('tr'); const id = tr.dataset.id;
+    const k = seg.dataset.k; const v = btn.dataset.v;
+    seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === btn));
+    try {
+      const m = await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'PATCH', body: { [k]: v } });
+      Object.assign(state.courant.membres.find(x => x.id === id), m);
+      toast('Membre mis à jour');
+    } catch (err) { toast(err.message); renderMembres(); }
+    return;
+  }
 $('#memberRows').addEventListener('click', async e => {
   if (!e.target.closest('.del')) return;
-  const id = e.target.closest('tr').dataset.id;
-  await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'DELETE' });
-  state.courant.membres = state.courant.membres.filter(x => x.id !== id);
-  renderMembres(); syncCount();
+  const tr = e.target.closest('tr');
+  const id = tr.dataset.id;
+  const nom = tr.querySelector('input.edit[data-k="nom"]')?.value || '';
+  if (!confirm(`Retirer « ${nom || 'ce membre'} » du groupe ?`)) return;
+  try {
+    await api(`/api/groupes/${state.courant.id}/membres/${id}`, { method: 'DELETE' });
+    state.courant.membres = state.courant.membres.filter(x => x.id !== id);
+    renderMembres(); syncCount();
+  } catch (err) { toast(err.message); }
 });
 
 $('#importBtn').addEventListener('click', async () => {
