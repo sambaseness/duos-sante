@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Duos Santé</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- Connexion -->
+  <section id="login" class="login hidden">
+    <form id="loginForm" class="login-card">
+      <div class="brand"><span class="dot"></span> Duos Santé</div>
+      <h1>Espace super admin</h1>
+      <p class="muted">Commission Santé — répartition des équipes</p>
+      <label>Mot de passe
+        <input type="password" id="pwd" autocomplete="current-password" required autofocus />
+      </label>
+      <p id="loginErr" class="error"></p>
+      <button class="btn primary full" type="submit">Se connecter</button>
+    </form>
+  </section>
+
+  <!-- Application -->
+  <section id="app" class="layout hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="dot"></span> Duos Santé</div>
+      <form id="newGroup" class="new-group">
+        <input id="newGroupName" placeholder="Nouveau groupe…" required />
+        <button class="btn icon primary" title="Créer">+</button>
+      </form>
+      <nav id="groupList" class="group-list"></nav>
+      <button id="logout" class="btn ghost small">Se déconnecter</button>
+    </aside>
+
+    <main class="main">
+      <div id="empty" class="empty">
+        <h2>Aucun groupe sélectionné</h2>
+        <p class="muted">Créez un groupe à gauche pour commencer.</p>
+      </div>
+
+      <div id="groupView" class="hidden">
+        <header class="group-head">
+          <div>
+            <p class="eyebrow">Groupe</p>
+            <h1 id="groupName" class="editable" title="Cliquer pour renommer"></h1>
+          </div>
+          <button id="deleteGroup" class="btn ghost danger small">Supprimer le groupe</button>
+        </header>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="membres">Membres <span id="countBadge" class="badge">0</span></button>
+          <button class="tab" data-tab="repartition">Répartition</button>
+        </div>
+
+        <!-- Membres -->
+        <div id="tab-membres" class="tab-panel">
+          <form id="addForm" class="card add-form">
+            <div class="row">
+              <label class="grow">Nom complet<input id="fNom" required placeholder="Ex. Awa Diop" /></label>
+              <label class="grow">Département<input id="fDep" required list="depList" placeholder="Ex. Informatique" /></label>
+              <datalist id="depList"></datalist>
+              <div class="field">
+                <span class="label">Sexe</span>
+                <div class="seg" id="fSexe">
+                  <button type="button" data-v="F" class="on">Fille</button>
+                  <button type="button" data-v="M">Garçon</button>
+                </div>
+              </div>
+            </div>
+            <div class="row between">
+              <div class="checks">
+                <label class="check"><input type="checkbox" id="fNonMixte" /> Refuse un duo mixte</label>
+                <label class="check"><input type="checkbox" id="fMalade" /> Malade</label>
+              </div>
+              <button class="btn primary">Ajouter</button>
+            </div>
+          </form>
+
+          <details class="card import">
+            <summary>Importer une liste</summary>
+            <p class="muted small">Une personne par ligne : <code>Nom ; Département ; Sexe (F/M) ; Non mixte (oui/non) ; Malade (oui/non)</code>. Copier-coller depuis Excel fonctionne aussi.</p>
+            <textarea id="importText" rows="5" placeholder="Awa Diop;Informatique;F;non;non&#10;Moussa Fall;Génie Civil;M;oui;oui"></textarea>
+            <div class="row between">
+              <span id="importMsg" class="muted small"></span>
+              <button id="importBtn" class="btn">Importer</button>
+            </div>
+          </details>
+
+          <div class="card table-card">
+            <div class="table-tools">
+              <input id="search" placeholder="Rechercher…" />
+              <span id="stats" class="muted small"></span>
+            </div>
+            <table>
+              <thead><tr><th>Nom</th><th>Département</th><th>Sexe</th><th class="c">Non mixte</th><th class="c">Malade</th><th></th></tr></thead>
+              <tbody id="memberRows"></tbody>
+            </table>
+            <p id="noMembers" class="muted center pad">Aucun membre pour l'instant.</p>
+          </div>
+        </div>
+
+        <!-- Répartition -->
+        <div id="tab-repartition" class="tab-panel hidden">
+          <div class="card run-card">
+            <div>
+              <h3>Lancer l'algorithme</h3>
+              <p class="muted small">Duos de départements différents, au moins une personne non malade par duo, et pas de duo mixte pour ceux qui l'ont refusé. En cas de nombre impair, un trio est formé.</p>
+            </div>
+            <button id="runBtn" class="btn primary">Lancer la répartition</button>
+          </div>
+
+          <div id="result" class="hidden">
+            <div class="result-head">
+              <div>
+                <h3 id="resultTitle"></h3>
+                <p id="resultDate" class="muted small"></p>
+              </div>
+              <div class="exports">
+                <label class="check small"><input type="checkbox" id="details" /> Inclure santé & mixité</label>
+                <a id="pdfBtn" class="btn">Exporter PDF</a>
+                <a id="csvBtn" class="btn">Exporter CSV</a>
+              </div>
+            </div>
+            <div id="warn" class="warn hidden"></div>
+            <div id="teams" class="teams"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

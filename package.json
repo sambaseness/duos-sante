@@ -1,0 +1,18 @@
+{
+  "name": "duos-sante",
+  "version": "1.0.0",
+  "description": "Répartition en duos — Commission Santé",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test-algo.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pdfkit": "^0.15.2"
+  }
+}

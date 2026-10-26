@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: duos-sante
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false        # à saisir dans Render au moment du déploiement
+      - key: SESSION_SECRET
+        generateValue: true
