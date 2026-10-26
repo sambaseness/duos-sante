@@ -10,3 +10,5 @@ services:
         sync: false        # à saisir dans Render au moment du déploiement
       - key: SESSION_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        sync: false        # URL de connexion Neon (postgresql://...)

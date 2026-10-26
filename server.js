@@ -246,4 +246,6 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }))
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, () => console.log(`✅ Duos Santé sur http://localhost:${PORT}`));
+store.init()
+  .then(() => app.listen(PORT, () => console.log(`✅ Duos Santé sur http://localhost:${PORT}`)))
+  .catch(e => { console.error('❌ Impossible de charger les données :', e.message); process.exit(1); });

@@ -32,7 +32,9 @@ Ou manuellement : **New → Web Service**, Build `npm install`, Start `npm start
 
 ### Persistance des données
 
-Les données sont stockées dans `data/db.json`. Sur le plan gratuit de Render, le disque est réinitialisé à chaque redéploiement ou mise en veille prolongée. Pour garder les données : ajouter un **Disk** (plan payant) monté sur `/var/data` et définir `DATA_DIR=/var/data`. Pensez sinon à exporter le CSV après chaque répartition.
+Si `DATABASE_URL` est défini, les données sont stockées dans PostgreSQL (table `etat`, créée automatiquement). Sinon, elles vont dans `data/db.json`, qui est effacé à chaque redéploiement sur le plan gratuit de Render.
+
+Base gratuite recommandée : [Neon](https://neon.tech) → créer un projet, copier la *connection string* (`postgresql://...`) et la coller dans la variable `DATABASE_URL` sur Render.
 
 ## Import en masse
 
