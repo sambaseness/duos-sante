@@ -8,7 +8,7 @@ Chaque duo respecte :
 
 1. **Départements différents**
 2. **Au moins une personne non malade**
-3. **Pas de duo mixte** si l'un des deux a coché « Refuse un duo mixte »
+3. **Duo mixte (fille + garçon) par défaut** ; duo du même sexe si l'un des deux a coché « Refuse un duo mixte »
 
 Si le nombre de membres est impair, la personne restante rejoint un duo compatible (trio). Si personne ne peut être apparié avec les contraintes, il apparaît dans « Non affectés ».
 

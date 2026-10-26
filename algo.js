@@ -3,6 +3,8 @@
 //  1. Départements différents
 //  2. Au moins une personne non malade
 //  3. Si l'un des deux refuse la mixité, les deux doivent être du même sexe
+// Préférence : par défaut les duos sont mixtes (fille + garçon) ; un duo du même sexe
+// n'est formé que si l'un des deux a coché « non mixte » ou si les effectifs l'imposent.
 
 function norm(s) {
   return String(s || '')
@@ -15,6 +17,11 @@ function compatible(a, b) {
   if (a.malade && b.malade) return false;
   if ((a.nonMixte || b.nonMixte) && a.sexe !== b.sexe) return false;
   return true;
+}
+
+// Duo du même sexe alors que les deux acceptaient la mixité
+function evitable(a, b) {
+  return a.sexe === b.sexe && !a.nonMixte && !b.nonMixte;
 }
 
 function shuffle(arr) {
@@ -52,7 +59,9 @@ function search(people, budget) {
       // Cette personne ne peut être appariée : on la met de côté
       return rec(pool.filter((_, k) => k !== pick), pairs);
     }
-    for (const j of shuffle(pickOpts)) {
+    const ordre = shuffle(pickOpts)
+      .sort((x, y) => evitable(pool[pick], pool[x]) - evitable(pool[pick], pool[y]));
+    for (const j of ordre) {
       const a = pool[pick], b = pool[j];
       const rest = pool.filter((_, k) => k !== pick && k !== j);
       pairs.push([a, b]);
@@ -86,13 +95,22 @@ function tentative(people) {
   return { equipes, nonAffectes };
 }
 
+function nbEvitables(r) {
+  return r.equipes.filter(e => e.length === 2 && evitable(e[0], e[1])).length;
+}
+
 function repartir(members) {
-  // Plusieurs tentatives aléatoires : on garde celle qui laisse le moins de personnes sans équipe
-  let best = null;
+  // Plusieurs tentatives aléatoires : on garde celle qui laisse le moins de personnes sans équipe,
+  // puis celle qui a le moins de duos du même sexe évitables.
+  const mixables = members.filter(m => !m.nonMixte);
+  const f = mixables.filter(m => m.sexe === 'F').length;
+  const minEvitables = Math.floor(Math.abs(f - (mixables.length - f)) / 2);
+  let best = null, bestEv = Infinity;
   for (let t = 0; t < 40; t++) {
-    const r = tentative(members);
-    if (!best || r.nonAffectes.length < best.nonAffectes.length) best = r;
-    if (best.nonAffectes.length === 0) break;
+    const r = tentative(members), ev = nbEvitables(r);
+    if (!best || r.nonAffectes.length < best.nonAffectes.length ||
+        (r.nonAffectes.length === best.nonAffectes.length && ev < bestEv)) { best = r; bestEv = ev; }
+    if (best.nonAffectes.length === 0 && bestEv <= minEvitables) break;
   }
   const { equipes, nonAffectes } = best;
 
